@@ -28,22 +28,4 @@ public class WarningHandler {
         SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
         return formatter.format(date);
     }
-
-    public void cleanWarnings(String channel){
-        CSVHandler csvHandler = new CSVHandler();
-        csvHandler.checkFile(channel);
-//        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
-//            List<String[]> rows = csvReader.readAll();
-//        }
-    }
-
-//    public int CalculateWarnings(int difference, int count){
-//        if(difference >= 30 && count == 3){
-//            count = 2;
-//        }
-//        else if(difference >= 7 && count == 2) {
-//            count = 1;
-//        }
-//        return count;
-//    }
 }

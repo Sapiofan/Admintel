@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.UnbanChatMember;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -14,6 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberBanned;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiValidationException;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -50,14 +52,6 @@ public class Bot extends TelegramLongPollingBot {
         User user = update.getMessage().getFrom();
         String channel = update.getMessage().getChat().getTitle();
 
-        timer.scheduleAtFixedRate(new TimerTask(){
-            @Override
-            public void run(){
-                WarningHandler warningHandler = new WarningHandler();
-                warningHandler.cleanWarnings(channel);
-            }
-        },0,86400000);
-
         String name = user.getUserName();
         log.info(name);
         log.info(channel);
@@ -66,9 +60,28 @@ public class Bot extends TelegramLongPollingBot {
         Long chatId = update.getMessage().getChatId();
         message.setChatId(update.getMessage().getChatId().toString());
 
+        checkMessage(command, name, channel, chatId, user, message);
+        String[] words = command.split(" ");
+        if(words[0].equals("/unban")){
+//            List<Long> =
+            for (int i = 1; i < words.length; i++) {
+                if(words[i].charAt(0) == '@'){
+//                    UnbanChatMember unbanChatMember = new UnbanChatMember(String.valueOf(chatId), );
+
+                }
+            }
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void checkMessage(String command, String name, String channel, Long chatId, User user, SendMessage message){
         ObscenitiesCheck obscenitiesCheck = new ObscenitiesCheck();
         if(obscenitiesCheck.obscenitiesCheck(command)){
-            int count = csvHandler.giveWarn(name, channel);
+            int count = csvHandler.giveWarn(user, channel);
             if(count == 3){
                 BanChatMember banChatMember = new BanChatMember(String.valueOf(chatId), user.getId());
                 banChatMember.setUntilDate(0);
@@ -78,17 +91,10 @@ public class Bot extends TelegramLongPollingBot {
                     e.printStackTrace();
                 }
                 log.warn("Member was banned");
+                message.setText("User @"+ user.getUserName() +" get last ("+count+") warning. User was banned");
             }
             else
-                message.setText("Don't swear. It's your "+ count +" warning. After 3rd one you you will be banned");
-            try {
-                execute(message);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
-        }
-        if(command.equals("/test")){
-            message.setText("Bot is working");
+                message.setText("Don't swear, @"+ user.getUserName() +". It's your "+ count +" warning. On 3rd one you you will be banned");
             try {
                 execute(message);
             } catch (TelegramApiException e) {
