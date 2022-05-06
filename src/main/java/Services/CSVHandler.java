@@ -10,13 +10,14 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class CSVHandler {
-    private final static String USERS = "users.csv";
+    public final static String USERS = "users.csv";
+
+    private final static String BAD_WORDS = "badwords.csv";
 
     private static final Logger log = LoggerFactory.getLogger("log");
 
@@ -47,10 +48,7 @@ public class CSVHandler {
                 count = 1;
                 rows.add(row);
             }
-            FileWriter fileWriter = new FileWriter(channel + USERS);
-            CSVWriter writer = new CSVWriter(fileWriter);
-            writer.writeAll(rows);
-            writer.close();
+            writeToCSV(rows, channel);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -62,7 +60,7 @@ public class CSVHandler {
             log.info("File already exists.");
         }
         else{
-            String[] row = {"Usernames", "Warns", "Last warning", "Is banned", "User id"};
+            String[] row = {"Usernames", "Warns", "Last change", "Is banned", "User id"};
             FileWriter fileWriter = null;
             try {
                 fileWriter = new FileWriter(channel + USERS);
@@ -111,6 +109,101 @@ public class CSVHandler {
         log.warn("Warnings was cleaned");
     }
 
+    public Map<String, Long> getBannedUnbanned(String channel, String param){
+        checkFile(channel);
+        Map<String, Long> users = new HashMap<>();
+        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+            List<String[]> rows = csvReader.readAll();
+            for (String[] row : rows) {
+                if(row[3].equals(param)){
+                    users.put(row[0],Long.valueOf(row[4]));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return users;
+    }
+
+    public void unbannedAndAcquitUsers(List<String> names, String channel){
+        checkFile(channel);
+        WarningHandler warningHandler = new WarningHandler();
+        String date = warningHandler.convertDate();
+        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+            List<String[]> rows = csvReader.readAll();
+            for (int i = 1; i < rows.size(); i++) {
+                for (String name : names) {
+                    if (rows.get(i)[0].equals(name)) {
+                        rows.get(i)[3] = "not banned";
+                        rows.get(i)[1] = "0";
+                        rows.get(i)[2] = date;
+                    }
+                }
+            }
+            writeToCSV(rows, channel);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void bannedUsers(List<String> names, String channel){
+        checkFile(channel);
+        WarningHandler warningHandler = new WarningHandler();
+        String date = warningHandler.convertDate();
+        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+            List<String[]> rows = csvReader.readAll();
+            for (int i = 1; i < rows.size(); i++) {
+                for (String name : names) {
+                    if (rows.get(i)[0].equals(name)) {
+                        rows.get(i)[3] = "banned";
+                        rows.get(i)[2] = date;
+                    }
+                }
+            }
+            writeToCSV(rows, channel);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void listOfBadWords(Map<String, Long> bad){
+        checkBadWordsCSV();
+        try(CSVReader csvReader = new CSVReader(new FileReader(BAD_WORDS))) {
+            List<String[]> rows = csvReader.readAll();
+            for (String s : bad.keySet()) {
+                boolean flag = false;
+                for (int i = 1; i < rows.size(); i++) {
+                    String[] row = rows.get(i);
+                    if (row[0].equals(s.toLowerCase()) && !row[1].contains(String.valueOf(bad.get(s)))) {
+                        int value = Integer.valueOf(row[2]) + 1;
+                        if (value == 20) {
+                            FileHandler fileHandler = new FileHandler();
+                            fileHandler.addBadWordToTxt(row[0]);
+                            rows.remove(i);
+                            flag = true;
+                            break;
+                        }
+                        row[2] = String.valueOf(value);
+                        row[1] += bad.get(s) + ",";
+                    } else if (row[0].equals(s.toLowerCase()) && row[1].contains(String.valueOf(bad.get(s)))) {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (!flag) {
+                    String[] row = {s.toLowerCase(), bad.get(s) + ",", "1"};
+                    rows.add(row);
+                }
+            }
+            FileWriter fileWriter = new FileWriter(BAD_WORDS);
+            CSVWriter writer = new CSVWriter(fileWriter);
+            writer.writeAll(rows);
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private List<String> findFiles(Path path, String fileExtension)
             throws IOException {
 
@@ -129,5 +222,31 @@ public class CSVHandler {
         }
 
         return result;
+    }
+
+    private void writeToCSV(List<String[]> rows, String channel) throws IOException {
+        FileWriter fileWriter = new FileWriter(channel + USERS);
+        CSVWriter writer = new CSVWriter(fileWriter);
+        writer.writeAll(rows);
+        writer.close();
+    }
+
+    private void checkBadWordsCSV(){
+        if(new File(BAD_WORDS).exists()){
+            log.info("File already exists.");
+        }
+        else{
+            String[] row = {"Bad word", "List of id", "Quantity"};
+            FileWriter fileWriter = null;
+            try {
+                fileWriter = new FileWriter(BAD_WORDS);
+                CSVWriter writer = new CSVWriter(fileWriter);
+                writer.writeNext(row);
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            log.warn("File was created: " + BAD_WORDS);
+        }
     }
 }

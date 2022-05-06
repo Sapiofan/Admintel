@@ -16,6 +16,7 @@ public class ObscenitiesCheck {
         FileHandler fileHandler = new FileHandler();
         String engText = fileHandler.readEnglishObs();
         String rusText = fileHandler.readRussianObs();
+        String additional = fileHandler.readAdditional();
         String[] eng = engText.split(",");
         for (String s : eng) {
             if(message.toLowerCase().contains(s)){
@@ -24,6 +25,12 @@ public class ObscenitiesCheck {
         }
         String[] ru = rusText.split(",");
         for (String s : ru) {
+            if(message.toLowerCase().contains(s)){
+                return true;
+            }
+        }
+        String[] add = additional.split(",");
+        for (String s : add) {
             if(message.toLowerCase().contains(s)){
                 return true;
             }

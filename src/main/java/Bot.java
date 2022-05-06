@@ -4,10 +4,13 @@ import Services.WarningHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.UnbanChatMember;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Chat;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
@@ -15,9 +18,10 @@ import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberBanned;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiValidationException;
 
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.io.File;
+import java.util.*;
+
+import static Services.CSVHandler.USERS;
 
 public class Bot extends TelegramLongPollingBot {
 
@@ -60,21 +64,108 @@ public class Bot extends TelegramLongPollingBot {
         Long chatId = update.getMessage().getChatId();
         message.setChatId(update.getMessage().getChatId().toString());
 
-        checkMessage(command, name, channel, chatId, user, message);
+        if(!update.getMessage().getChat().isUserChat()){
+            checkMessage(command, name, channel, chatId, user, message);
+        }
         String[] words = command.split(" ");
-        if(words[0].equals("/unban")){
-//            List<Long> =
-            for (int i = 1; i < words.length; i++) {
-                if(words[i].charAt(0) == '@'){
-//                    UnbanChatMember unbanChatMember = new UnbanChatMember(String.valueOf(chatId), );
-
+        if(update.getMessage().getChat().isGroupChat() || update.getMessage().getChat().isSuperGroupChat()) {
+            if (words[0].equals("/ban")) {
+                Map<String, Long> notBannedUsers = csvHandler.getBannedUnbanned(channel, "not banned");
+                List<String> names = new ArrayList<>();
+                for (int i = 1; i < words.length; i++) {
+                    if (words[i].charAt(0) == '@') {
+                        BanChatMember banChatMember = new BanChatMember(String.valueOf(chatId), notBannedUsers.get(words[i]));
+                        try {
+                            execute(banChatMember);
+                            names.add(words[i].substring(1));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
+                csvHandler.bannedUsers(names, channel);
+                String m = "Such users was baned: ";
+                for (String s : names) {
+                    m += "@" + s + " ";
+                }
+                message.setText(m);
+                try {
+                    execute(message);
+                    log.info(m);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            } else if (words[0].equals("/unban")) {
+                Map<String, Long> bannedUsers = csvHandler.getBannedUnbanned(channel, "banned");
+                List<String> names = new ArrayList<>();
+                for (int i = 1; i < words.length; i++) {
+                    if (words[i].charAt(0) == '@' && bannedUsers.containsKey(words[i].substring(1))) {
+                        UnbanChatMember unbanChatMember = new UnbanChatMember(String.valueOf(chatId), bannedUsers.get(words[i]));
+                        try {
+                            execute(unbanChatMember);
+                            names.add(words[i].substring(1));
+                        } catch (TelegramApiException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                csvHandler.unbannedAndAcquitUsers(names, channel);
+                String m = "Such users was unbaned: ";
+                for (String s : names) {
+                    m += "@" + s + " ";
+                }
+                message.setText(m);
+                try {
+                    execute(message);
+                    log.info(m);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            } else if (words[0].equals("/acquit")) {
+                List<String> names = new ArrayList<>();
+                for (int i = 1; i < words.length; i++) {
+                    if (words[i].charAt(0) == '@') {
+                        names.add(words[i].substring(1));
+                    }
+                }
+                csvHandler.unbannedAndAcquitUsers(names, channel);
+
+                String m = "Such users was acquitted: ";
+                for (String s : names) {
+                    m += "@" + s + " ";
+                }
+                message.setText(m);
+                try {
+                    execute(message);
+                    log.info(m);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            } else if (words[0].equals("/status")) {
+                SendDocument sendDocument = new SendDocument();
+                sendDocument.setChatId(String.valueOf(chatId));
+                File file = new File(channel + USERS);
+                InputFile inputFile = new InputFile(file);
+                sendDocument.setDocument(inputFile);
+                try {
+                    execute(sendDocument);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            } else if (words[0].equals("/report")) {
+
             }
-            try {
-                execute(message);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
+        }
+
+        if(words[0].equals("/badword")){
+            Map<String, Long> badWords = new HashMap<>();
+            for (int i = 1; i < words.length; i++) {
+                badWords.put(words[i], user.getId());
             }
+            csvHandler.listOfBadWords(badWords);
+        }
+        else if(words[0].equals("/help")){
+
         }
     }
 

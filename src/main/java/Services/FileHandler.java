@@ -1,15 +1,15 @@
 package Services;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import com.opencsv.CSVReader;
+
+import java.io.*;
 import java.net.URL;
 
 public class FileHandler {
 
-    private final String engPath = "src/main/resources/obscenities.txt";
-    private final String ruPath = "src/main/resources/rusobs.txt";
+    private static final String engPath = "src/main/resources/obscenities.txt";
+    private static final String ruPath = "src/main/resources/rusobs.txt";
+    private static final String addedWords = "src/main/resources/additional.txt";
 
     public String readEnglishObs(){
         return readFile(engPath);
@@ -17,6 +17,10 @@ public class FileHandler {
 
     public String readRussianObs(){
         return readFile(ruPath);
+    }
+
+    public String readAdditional(){
+        return readFile(addedWords);
     }
 
     public String readFile(String path) {
@@ -29,5 +33,27 @@ public class FileHandler {
             e.printStackTrace();
         }
         return text;
+    }
+
+    public void addBadWordToTxt(String badWord){
+        String temp;
+        boolean flag = false;
+        try(BufferedReader reader = new BufferedReader(new FileReader(addedWords))) {
+            while ((temp = reader.readLine()) != null){
+                if(temp.contains(badWord)){
+                    flag = true;
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if(!flag){
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(addedWords, true));) {
+                writer.append(badWord + ",");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
