@@ -4,6 +4,7 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.io.*;
@@ -20,6 +21,29 @@ public class CSVHandler {
     private final static String BAD_WORDS = "badwords.csv";
 
     private static final Logger log = LoggerFactory.getLogger("log");
+
+    public void writeUser(Chat chat, User user){
+        checkFile(chat.getTitle());
+        WarningHandler warningHandler = new WarningHandler();
+        String date = warningHandler.convertDate();
+        try(CSVReader csvReader = new CSVReader(new FileReader(chat.getTitle() + USERS))) {
+            List<String[]> rows = csvReader.readAll();
+            boolean flag = false;
+            for (int i = 1; i < rows.size(); i++) {
+                if (rows.get(i)[0].equals(user.getUserName())) {
+                    flag = true;
+                    break;
+                }
+            }
+            if(!flag){
+                String[] row = {user.getUserName(), "0", date, "not banned", user.getId().toString()};
+                rows.add(row);
+            }
+            writeToCSV(rows, chat.getTitle());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public int giveWarn(User user, String channel){
         checkFile(channel);
