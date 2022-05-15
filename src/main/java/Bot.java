@@ -18,6 +18,7 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberBanned;
 import org.telegram.telegrambots.meta.api.objects.polls.Poll;
+import org.telegram.telegrambots.meta.api.objects.polls.PollAnswer;
 import org.telegram.telegrambots.meta.api.objects.polls.PollOption;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
@@ -169,16 +170,20 @@ public class Bot extends TelegramLongPollingBot {
                 options.add("no");
                 SendPoll sendPoll = new SendPoll();
                 sendPoll.setChatId(String.valueOf(chatId));
-                sendPoll.setCloseDate(5);
+                Long time = System.currentTimeMillis() / 1000L;
+                sendPoll.setCloseDate(time.intValue() + 86400);
+                log.info(sendPoll.getCloseDate()+"");
                 sendPoll.setIsAnonymous(true);
                 sendPoll.setOptions(options);
-                String m = "Do you want to ban (the) user(s) on 3 days? ";
+                String forFile = "", m = "Do you want to ban user(s) on 3 days? ";
                 for (String messageUsername : getMessageUsernames(words)) {
-                    m += "@" + messageUsername;
+                    m += "@" + messageUsername + " ";
+                    forFile += messageUsername + ",";
                 }
                 sendPoll.setQuestion(m);
                 try {
-                     execute(sendPoll);
+                    execute(sendPoll);
+                    csvHandler.addPoll(sendPoll.getCloseDate(), forFile, String.valueOf(channel.getId()), channel.getTitle());
                 } catch (TelegramApiException e) {
                     e.printStackTrace();
                 }
@@ -238,25 +243,77 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     private boolean handlePoll(Update update) throws TelegramApiException {
-        update.getPollAnswer().getPollId();
-        Poll poll = new Poll();
+        Poll poll = update.getPoll();
         if(poll == null){
             return true;
         }
+        List<String[]> polls = csvHandler.getPolls();
         List<PollOption> options = poll.getOptions();
-        log.info(String.valueOf(update.getChatMember().getChat().getId()));
-        GetChatMemberCount memberCount = new GetChatMemberCount(String.valueOf(update.getChatMember().getChat().getId()));
+        GetChatMemberCount memberCount = new GetChatMemberCount(getChatId(polls, poll.getQuestion()));
         Integer count;
         count = execute(memberCount);
+        count -= 1;
         if(count <= 30 && options.get(0).getVoterCount() >= count*0.7){
-//            csvHandler.getBannedUnbanned()
+            banUsers(poll, polls);
         }
         else if(count <= 100 && options.get(0).getVoterCount() >= count*0.5){
-
+            banUsers(poll, polls);
         }
         else if(count > 100 && options.get(0).getVoterCount() >= count*0.1){
-
+            banUsers(poll, polls);
         }
         return false;
+    }
+
+    private void banUsers(Poll poll, List<String[]> polls) throws TelegramApiException {
+        String usernames =  getUsernames(poll.getQuestion());
+        for (String[] strings : polls) {
+            boolean flag = false;
+            String[] usernamesFromFile = strings[1].split(",");
+            for (String s : usernamesFromFile) {
+                if (!usernames.contains(s)) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag) {
+                List<Long> usersId = csvHandler.getUsersByNickname(usernamesFromFile, strings[3]);
+                for (Long userId : usersId) {
+                    BanChatMember banChatMember = new BanChatMember(strings[2], userId);
+                    execute(banChatMember);
+                }
+            }
+        }
+    }
+
+    private String getUsernames(String message){
+        String[] words = message.split(" ");
+        String names = "";
+        for (String word : words) {
+            if(word.charAt(0) == '@'){
+                names += word.substring(1)+",";
+            }
+        }
+        return names;
+    }
+
+    private String getChatId(List<String[]> polls, String question){
+        String[] usernames = getUsernames(question).split(",");
+        String chatId = "";
+        for (String[] poll : polls) {
+            boolean flag = false;
+            for (int i = 0; i < usernames.length; i++) {
+                if(!poll[1].contains(usernames[i])){
+                    flag = true;
+                    break;
+                }
+            }
+            if(!flag){
+                chatId = poll[2];
+                break;
+            }
+        }
+        log.info("chatId: "+chatId);
+        return chatId;
     }
 }

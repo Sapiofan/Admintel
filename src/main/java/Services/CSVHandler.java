@@ -20,6 +20,8 @@ public class CSVHandler {
 
     private final static String BAD_WORDS = "badwords.csv";
 
+    private final static String POLLS = "polls.csv";
+
     private static final Logger log = LoggerFactory.getLogger("log");
 
     public void writeUser(Chat chat, User user){
@@ -133,6 +135,21 @@ public class CSVHandler {
         log.warn("Warnings was cleaned");
     }
 
+    public void cleanPolls(){
+        String[] firstRow = {"Close date", "Usernames", "Channel id", "Channel"};
+        checkCSV(POLLS, firstRow);
+        try(CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
+            List<String[]> rows = csvReader.readAll();
+            rows.removeIf(row -> Long.parseLong(row[0]) <= (System.currentTimeMillis() / 1000));
+            FileWriter fileWriter = new FileWriter(POLLS);
+            CSVWriter writer = new CSVWriter(fileWriter);
+            writer.writeAll(rows);
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public Map<String, Long> getBannedUnbanned(String channel, String param){
         checkFile(channel);
         Map<String, Long> users = new HashMap<>();
@@ -191,7 +208,8 @@ public class CSVHandler {
     }
 
     public void listOfBadWords(Map<String, Long> bad){
-        checkBadWordsCSV();
+        String[] firstRow = {"Bad word", "List of id", "Quantity"};
+        checkCSV(BAD_WORDS, firstRow);
         try(CSVReader csvReader = new CSVReader(new FileReader(BAD_WORDS))) {
             List<String[]> rows = csvReader.readAll();
             for (String s : bad.keySet()) {
@@ -228,6 +246,57 @@ public class CSVHandler {
         }
     }
 
+    public void addPoll(Integer closeDate, String names, String channelId, String channel){
+        String[] firstRow = {"Close date", "Usernames", "Channel id", "Channel"};
+        checkCSV(POLLS, firstRow);
+        try(CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
+            List<String[]> rows = csvReader.readAll();
+            String[] row = {String.valueOf(closeDate), names, channelId, channel};
+            rows.add(row);
+            FileWriter fileWriter = new FileWriter(POLLS);
+            CSVWriter writer = new CSVWriter(fileWriter);
+            writer.writeAll(rows);
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String[]> getPolls(){
+        String[] firstRow = {"Close date", "Usernames", "Channel id", "Channel"};
+        checkCSV(POLLS, firstRow);
+        try(CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
+            return csvReader.readAll();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public List<Long> getUsersByNickname(String[] usernames, String channel){
+        List<Long> ids = new ArrayList<>();
+        checkFile(channel);
+        try(CSVReader csvReader = new CSVReader(new FileReader(channel+USERS))) {
+            List<String[]> rows = csvReader.readAll();
+            for (String username : usernames) {
+                for (String[] row : rows) {
+                    if (username.equals(row[0]) && !row[3].equals("banned")) {
+                        ids.add(Long.valueOf(row[4]));
+                        row[3] = "banned";
+                        break;
+                    }
+                }
+            }
+            FileWriter fileWriter = new FileWriter(channel+USERS);
+            CSVWriter writer = new CSVWriter(fileWriter);
+            writer.writeAll(rows);
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return ids;
+    }
+
     private List<String> findFiles(Path path, String fileExtension)
             throws IOException {
 
@@ -255,22 +324,21 @@ public class CSVHandler {
         writer.close();
     }
 
-    private void checkBadWordsCSV(){
-        if(new File(BAD_WORDS).exists()){
+    private void checkCSV(String path, String[] firstRow){
+        if(new File(path).exists()){
             log.info("File already exists.");
         }
         else{
-            String[] row = {"Bad word", "List of id", "Quantity"};
             FileWriter fileWriter = null;
             try {
-                fileWriter = new FileWriter(BAD_WORDS);
+                fileWriter = new FileWriter(path);
                 CSVWriter writer = new CSVWriter(fileWriter);
-                writer.writeNext(row);
+                writer.writeNext(firstRow);
                 writer.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            log.warn("File was created: " + BAD_WORDS);
+            log.warn("File was created: " + path);
         }
     }
 }

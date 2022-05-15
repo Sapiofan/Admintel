@@ -19,6 +19,7 @@ public class Main {
                 public void run(){
                     CSVHandler csvHandler = new CSVHandler();
                     csvHandler.cleanWarnings();
+                    csvHandler.cleanPolls();
                 }
             },0,86400000);
         } catch (TelegramApiException e) {
