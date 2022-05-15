@@ -24,11 +24,11 @@ public class CSVHandler {
 
     private static final Logger log = LoggerFactory.getLogger("log");
 
-    public void writeUser(Chat chat, User user){
+    public void writeUser(Chat chat, User user) {
         checkFile(chat.getTitle());
-        WarningHandler warningHandler = new WarningHandler();
+        DateHandler warningHandler = new DateHandler();
         String date = warningHandler.convertDate();
-        try(CSVReader csvReader = new CSVReader(new FileReader(chat.getTitle() + USERS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(chat.getTitle() + USERS))) {
             List<String[]> rows = csvReader.readAll();
             boolean flag = false;
             for (int i = 1; i < rows.size(); i++) {
@@ -37,22 +37,23 @@ public class CSVHandler {
                     break;
                 }
             }
-            if(!flag){
+            if (!flag) {
                 String[] row = {user.getUserName(), "0", date, "not banned", user.getId().toString()};
                 rows.add(row);
             }
             writeToCSV(rows, chat.getTitle());
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + chat.getTitle() + USERS);
             e.printStackTrace();
         }
     }
 
-    public int giveWarn(User user, String channel){
+    public int giveWarn(User user, String channel) {
         checkFile(channel);
         int count = 0;
-        WarningHandler warningHandler = new WarningHandler();
+        DateHandler warningHandler = new DateHandler();
         String date = warningHandler.convertDate();
-        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
             List<String[]> rows = csvReader.readAll();
             boolean flag = false;
             for (int i = 1; i < rows.size(); i++) {
@@ -61,46 +62,46 @@ public class CSVHandler {
                     if (count == 3) {
                         rows.get(i)[3] = "banned";
                         rows.get(i)[1] = "3";
-                    }
-                    else {
+                    } else {
                         rows.get(i)[1] = String.valueOf(count);
                     }
                     flag = true;
                     break;
                 }
             }
-            if(!flag){
+            if (!flag) {
                 String[] row = {user.getUserName(), "1", date, "not banned", user.getId().toString()};
                 count = 1;
                 rows.add(row);
             }
             writeToCSV(rows, channel);
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + channel + USERS);
             e.printStackTrace();
         }
         return count;
     }
 
-    public void checkFile(String channel){
-        if(new File(channel + USERS).exists()){
+    public void checkFile(String channel) {
+        if (new File(channel + USERS).exists()) {
             log.info("File already exists.");
-        }
-        else{
+        } else {
             String[] row = {"Usernames", "Warns", "Last change", "Is banned", "User id"};
-            FileWriter fileWriter = null;
+            FileWriter fileWriter;
             try {
                 fileWriter = new FileWriter(channel + USERS);
                 CSVWriter writer = new CSVWriter(fileWriter);
                 writer.writeNext(row);
                 writer.close();
             } catch (IOException e) {
+                log.error("something went wrong when tried to write to file: " + channel + USERS);
                 e.printStackTrace();
             }
             log.warn("File was created: " + channel + USERS);
         }
     }
 
-    public void cleanWarnings(){
+    public void cleanWarnings() {
         List<String> files = null;
         try {
             files = findFiles(Paths.get(""), "users.csv");
@@ -108,18 +109,17 @@ public class CSVHandler {
             e.printStackTrace();
         }
 
-        WarningHandler warningHandler = new WarningHandler();
+        DateHandler warningHandler = new DateHandler();
         String date = warningHandler.convertDate();
         for (String file : files) {
-            try(CSVReader csvReader = new CSVReader(new FileReader(file))) {
+            try (CSVReader csvReader = new CSVReader(new FileReader(file))) {
                 List<String[]> rows = csvReader.readAll();
                 for (int i = 1; i < rows.size(); i++) {
                     int diff = warningHandler.dateDifference(rows.get(i)[2], date);
-                    if(diff >= 30 && rows.get(i)[1].equals("2")){
+                    if (diff >= 30 && rows.get(i)[1].equals("2")) {
                         rows.get(i)[1] = "0";
                         rows.get(i)[2] = date;
-                    }
-                    else if(diff >= 7 && rows.get(i)[1].equals("1")){
+                    } else if (diff >= 7 && rows.get(i)[1].equals("1")) {
                         rows.get(i)[1] = "0";
                         rows.get(i)[2] = date;
                     }
@@ -129,16 +129,17 @@ public class CSVHandler {
                 writer.writeAll(rows);
                 writer.close();
             } catch (IOException e) {
+                log.error("something went wrong when tried to read or write to files");
                 e.printStackTrace();
             }
         }
         log.warn("Warnings was cleaned");
     }
 
-    public void cleanPolls(){
+    public void cleanPolls() {
         String[] firstRow = {"Close date", "Usernames", "Channel id", "Channel"};
         checkCSV(POLLS, firstRow);
-        try(CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
             List<String[]> rows = csvReader.readAll();
             rows.removeIf(row -> Long.parseLong(row[0]) <= (System.currentTimeMillis() / 1000));
             FileWriter fileWriter = new FileWriter(POLLS);
@@ -146,31 +147,33 @@ public class CSVHandler {
             writer.writeAll(rows);
             writer.close();
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + POLLS);
             e.printStackTrace();
         }
     }
 
-    public Map<String, Long> getBannedUnbanned(String channel, String param){
+    public Map<String, Long> getBannedUnbanned(String channel, String param) {
         checkFile(channel);
         Map<String, Long> users = new HashMap<>();
-        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
             List<String[]> rows = csvReader.readAll();
             for (String[] row : rows) {
-                if(row[3].equals(param)){
-                    users.put(row[0],Long.valueOf(row[4]));
+                if (row[3].equals(param)) {
+                    users.put(row[0], Long.valueOf(row[4]));
                 }
             }
         } catch (IOException e) {
+            log.error("something went wrong when tried to read file: " + channel + USERS);
             e.printStackTrace();
         }
         return users;
     }
 
-    public void unbannedAndAcquitUsers(List<String> names, String channel){
+    public void unbannedAndAcquitUsers(List<String> names, String channel) {
         checkFile(channel);
-        WarningHandler warningHandler = new WarningHandler();
+        DateHandler warningHandler = new DateHandler();
         String date = warningHandler.convertDate();
-        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
             List<String[]> rows = csvReader.readAll();
             for (int i = 1; i < rows.size(); i++) {
                 for (String name : names) {
@@ -183,15 +186,16 @@ public class CSVHandler {
             }
             writeToCSV(rows, channel);
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + channel + USERS);
             e.printStackTrace();
         }
     }
 
-    public void bannedUsers(List<String> names, String channel){
+    public void bannedUsers(List<String> names, String channel) {
         checkFile(channel);
-        WarningHandler warningHandler = new WarningHandler();
+        DateHandler warningHandler = new DateHandler();
         String date = warningHandler.convertDate();
-        try(CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
             List<String[]> rows = csvReader.readAll();
             for (int i = 1; i < rows.size(); i++) {
                 for (String name : names) {
@@ -203,21 +207,22 @@ public class CSVHandler {
             }
             writeToCSV(rows, channel);
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + channel + USERS);
             e.printStackTrace();
         }
     }
 
-    public void listOfBadWords(Map<String, Long> bad){
+    public void listOfBadWords(Map<String, Long> bad) {
         String[] firstRow = {"Bad word", "List of id", "Quantity"};
         checkCSV(BAD_WORDS, firstRow);
-        try(CSVReader csvReader = new CSVReader(new FileReader(BAD_WORDS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(BAD_WORDS))) {
             List<String[]> rows = csvReader.readAll();
             for (String s : bad.keySet()) {
                 boolean flag = false;
                 for (int i = 1; i < rows.size(); i++) {
                     String[] row = rows.get(i);
                     if (row[0].equals(s.toLowerCase()) && !row[1].contains(String.valueOf(bad.get(s)))) {
-                        int value = Integer.valueOf(row[2]) + 1;
+                        int value = Integer.parseInt(row[2]) + 1;
                         if (value == 20) {
                             FileHandler fileHandler = new FileHandler();
                             fileHandler.addBadWordToTxt(row[0]);
@@ -242,14 +247,15 @@ public class CSVHandler {
             writer.writeAll(rows);
             writer.close();
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + BAD_WORDS);
             e.printStackTrace();
         }
     }
 
-    public void addPoll(Integer closeDate, String names, String channelId, String channel){
+    public void addPoll(Integer closeDate, String names, String channelId, String channel) {
         String[] firstRow = {"Close date", "Usernames", "Channel id", "Channel"};
         checkCSV(POLLS, firstRow);
-        try(CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
             List<String[]> rows = csvReader.readAll();
             String[] row = {String.valueOf(closeDate), names, channelId, channel};
             rows.add(row);
@@ -258,25 +264,27 @@ public class CSVHandler {
             writer.writeAll(rows);
             writer.close();
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + POLLS);
             e.printStackTrace();
         }
     }
 
-    public List<String[]> getPolls(){
+    public List<String[]> getPolls() {
         String[] firstRow = {"Close date", "Usernames", "Channel id", "Channel"};
         checkCSV(POLLS, firstRow);
-        try(CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(POLLS))) {
             return csvReader.readAll();
         } catch (IOException e) {
+            log.error("something went wrong when tried to read file: " + POLLS);
             e.printStackTrace();
         }
         return null;
     }
 
-    public List<Long> getUsersByNickname(String[] usernames, String channel){
+    public List<Long> getUsersByNickname(String[] usernames, String channel) {
         List<Long> ids = new ArrayList<>();
         checkFile(channel);
-        try(CSVReader csvReader = new CSVReader(new FileReader(channel+USERS))) {
+        try (CSVReader csvReader = new CSVReader(new FileReader(channel + USERS))) {
             List<String[]> rows = csvReader.readAll();
             for (String username : usernames) {
                 for (String[] row : rows) {
@@ -287,11 +295,12 @@ public class CSVHandler {
                     }
                 }
             }
-            FileWriter fileWriter = new FileWriter(channel+USERS);
+            FileWriter fileWriter = new FileWriter(channel + USERS);
             CSVWriter writer = new CSVWriter(fileWriter);
             writer.writeAll(rows);
             writer.close();
         } catch (IOException e) {
+            log.error("something went wrong when tried to read or write to file: " + channel + USERS);
             e.printStackTrace();
         }
         return ids;
@@ -324,18 +333,18 @@ public class CSVHandler {
         writer.close();
     }
 
-    private void checkCSV(String path, String[] firstRow){
-        if(new File(path).exists()){
+    private void checkCSV(String path, String[] firstRow) {
+        if (new File(path).exists()) {
             log.info("File already exists.");
-        }
-        else{
-            FileWriter fileWriter = null;
+        } else {
+            FileWriter fileWriter;
             try {
                 fileWriter = new FileWriter(path);
                 CSVWriter writer = new CSVWriter(fileWriter);
                 writer.writeNext(firstRow);
                 writer.close();
             } catch (IOException e) {
+                log.error("something went wrong when tried to write to file: " + path);
                 e.printStackTrace();
             }
             log.warn("File was created: " + path);

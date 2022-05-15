@@ -20,26 +20,26 @@ public class ObscenitiesCheck {
             "(\\s+|^)[бпПnБ6][лЛ][яЯ9]([дтДТDT]\\w*)?[\\?\\,\\.\\;\\-]*|(\\s+|^)(([зЗоОoO03]?" +
             "[аАaAтТT]?[ъЪ]?)|(\\w+[оОOo0еЕeE]))?[еЕeEиИuUёЁ][бБ6пП]([аАaAиИuUуУy]\\w*)?[\\?\\,\\.\\;\\-]*");
 
-    public boolean obscenitiesCheck(String message){
+    public boolean obscenitiesCheck(String message) {
         FileHandler fileHandler = new FileHandler();
         String engText = fileHandler.readEnglishObs();
         String rusText = fileHandler.readRussianObs();
         String additional = fileHandler.readAdditional();
         String[] eng = engText.split(",");
         for (String s : eng) {
-            if(message.toLowerCase().contains(s)){
+            if (message.toLowerCase().contains(s)) {
                 return true;
             }
         }
         String[] ru = rusText.split(",");
         for (String s : ru) {
-            if(message.toLowerCase().contains(s)){
+            if (message.toLowerCase().contains(s)) {
                 return true;
             }
         }
         String[] add = additional.split(",");
         for (String s : add) {
-            if(message.toLowerCase().contains(s)){
+            if (message.toLowerCase().contains(s)) {
                 return true;
             }
         }

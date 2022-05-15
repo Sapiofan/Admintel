@@ -1,10 +1,6 @@
 package Services;
 
-import com.opencsv.CSVReader;
-
 import java.io.*;
-import java.net.URL;
-import java.util.regex.Pattern;
 
 public class FileHandler {
 
@@ -50,8 +46,8 @@ public class FileHandler {
             e.printStackTrace();
         }
         if(!flag){
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(addedWords, true));) {
-                writer.append(badWord + ",");
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(addedWords, true))) {
+                writer.append(badWord).append(",");
             } catch (IOException e) {
                 e.printStackTrace();
             }

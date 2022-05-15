@@ -1,5 +1,4 @@
 import Services.CSVHandler;
-import Services.WarningHandler;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -14,14 +13,14 @@ public class Main {
             TelegramBotsApi api = new TelegramBotsApi(DefaultBotSession.class);
             Dotenv dotenv = Dotenv.load();
             api.registerBot(new Bot(dotenv.get("BOT_NAME"), dotenv.get("BOT_TOKEN")));
-            new Timer().scheduleAtFixedRate(new TimerTask(){
+            new Timer().scheduleAtFixedRate(new TimerTask() {
                 @Override
-                public void run(){
+                public void run() {
                     CSVHandler csvHandler = new CSVHandler();
                     csvHandler.cleanWarnings();
                     csvHandler.cleanPolls();
                 }
-            },0,86400000);
+            }, 0, 86400000);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
